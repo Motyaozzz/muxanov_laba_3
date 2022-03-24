@@ -22,7 +22,7 @@ namespace muxanov_laba_3
             {
                 if (tok.IsCancellationRequested)
                 {
-                        Console.WriteLine("Producer Stopped");
+                    Console.WriteLine("Producer Stopped");
                     return;
                 }
 
@@ -34,7 +34,12 @@ namespace muxanov_laba_3
                     var item = r.Next(1, 101);
                     await Writer.WriteAsync(item);
                     Program.count += 1;
-                    Console.WriteLine($"Записанные данные: {item}");
+                    Console.WriteLine($"Выдал: {item}");
+                }
+                else 
+                {
+                    //Console.WriteLine("Больше 100 эл-тов! Останавливаю производителей");
+
                 }
             }
         }
@@ -56,15 +61,15 @@ namespace muxanov_laba_3
             // ожидает, когда освободиться место для чтения элемента.
             while (await Reader.WaitToReadAsync())
             {
-                Thread.Sleep(50);
+                Thread.Sleep(300);
 
                 if (Reader.Count != 0)
                 {
                     var item = await Reader.ReadAsync();
                     Program.count -= 1;
-                    Console.WriteLine($"Полученные данные: {item}");
+                    Console.WriteLine($"Получил: {item}");
                 }
-                if (Reader.Count >= 100 )
+                if (Reader.Count >= 100)
                 {
                     Program.flag = false;
                 }
@@ -91,43 +96,68 @@ namespace muxanov_laba_3
 
         static void Main(string[] args)
         {
-            //создаю общий канал данных
-            Channel<int> channel = Channel.CreateBounded<int>(200);
-            //создаются производители и потребители
-            Task[] streams = new Task[5];
-
-
             
+
+
             var cts = new CancellationTokenSource();
-            
 
-            for (int i = 0; i < 5; i++)
+            bool flag = true;
+            while (flag)
             {
-                if (i < 3)
+                //создаю общий канал данных
+                Channel<int> channel = Channel.CreateBounded<int>(200);
+                //создаются производители и потребители
+                Task[] streams = new Task[5];
+                Console.WriteLine("Муханов Матвей БББО-05-20\n\nДобро пожаловать в Меню, выберите пункт программы:\n");
+                Console.WriteLine("[1] задание");
+                Console.WriteLine("[2] выход");
+                Console.Write("\n---> ");
+                int choice = int.Parse(Console.ReadLine());
+                switch (choice)
                 {
-                    streams[i] = Task.Run(() => { new Producer(channel.Writer, cts.Token); }, cts.Token);
-                }
-                else
-                {
-                    streams[i] = Task.Run(() => { new Consumer(channel.Reader, cts.Token); }, cts.Token);
+                    case 1:
+
+                        for (int i = 0; i < 5; i++)
+                        {
+                            if (i < 3)
+                            {
+                                streams[i] = Task.Run(() => { new Producer(channel.Writer, cts.Token); }, cts.Token);
+                            }
+                            else
+                            {
+                                streams[i] = Task.Run(() => { new Consumer(channel.Reader, cts.Token); }, cts.Token);
+                            }
+                        }
+
+                        new Thread(() =>
+                        {
+                            for (; ; )
+                            {
+                                if (Console.ReadKey(true).Key == ConsoleKey.Q)
+                                {
+                                    cts.Cancel();
+                                }
+                            }
+                        })
+                        { IsBackground = true }.Start();
+                        Task.WaitAll(streams);
+                        Console.WriteLine("\nНажмите Enter для выхода в меню...\n");
+                        Console.ReadLine();
+                        Console.Clear();
+                        break;
+                    case 2:
+                        flag = false;
+                        break;
+                    default:
+                        Console.WriteLine("\nОшибка! Повторите ввод!\n");
+                        Thread.Sleep(1500);
+                        Console.Clear();
+                        break;
                 }
             }
-
-
-            new Thread(() => {
-                for (; ; )
-                {
-                    if (Console.ReadKey(true).Key == ConsoleKey.Q)
-                    {
-                        cts.Cancel();
-                    }
-                }
-            })
-            { IsBackground = true }.Start();
-
-
-            //Ожидает завершения выполнения всех указанных объектов Task 
-            Task.WaitAll(streams);
+        
+                        //Ожидает завершения выполнения всех указанных объектов Task 
+                       
         }
     }
 }
